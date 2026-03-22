@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Grade Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --accent: #6c63ff;
+    --accent2: #a78bfa;
+    --accent3: #38bdf8;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --red: #f87171;
+    --text: #f0f0f5;
+    --muted: #6b6b85;
+    --muted2: #9898b0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .badge-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(108,99,255,0.12);
+    border: 1px solid rgba(108,99,255,0.3);
+    color: var(--accent2);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+  }
+
+  .badge-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:0.5;transform:scale(0.8)}
+  }
+
+  h1 {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #f0f0f5 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+  }
+
+  .header-sub {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--border2); }
+  .stat-card:hover::before { opacity: 1; }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .stat-value.accent { color: var(--accent2); }
+  .stat-value.green { color: var(--green); }
+
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .form-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted2);
+    margin-bottom: 16px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted2);
+    margin-bottom: 6px;
+    letter-spacing: 0.04em;
+  }
+
+  .field input {
+    width: 100%;
+    height: 42px;
+    padding: 0 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .field input::placeholder { color: var(--muted); }
+  .field input:focus {
+    border-color: rgba(108,99,255,0.5);
+    box-shadow: 0 0 0 3px rgba(108,99,255,0.1);
+  }
+
+  .btn-add {
+    height: 42px;
+    padding: 0 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-add:hover { background: #5a52e0; }
+  .btn-add:active { transform: scale(0.97); }
+
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .table-header-bar {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .table-header-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted2);
+  }
+
+  .student-count {
+    font-size: 12px;
+    background: rgba(108,99,255,0.12);
+    color: var(--accent2);
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  thead th {
+    padding: 10px 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody td {
+    padding: 12px 20px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .score-mono {
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .na { color: var(--muted); font-style: italic; font-size: 13px; }
+
+  .grade {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .g-A { background: rgba(74,222,128,0.12); color: #4ade80; border: 1px solid rgba(74,222,128,0.2); }
+  .g-B { background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.2); }
+  .g-C { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+  .g-D { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.2); }
+  .g-F { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+  .g-NA { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+
+  .btn-del {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--muted);
+    cursor: pointer;
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .btn-del:hover {
+    color: var(--red);
+    background: rgba(248,113,113,0.1);
+    border-color: rgba(248,113,113,0.2);
+  }
+
+  .empty-state {
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  /* Action buttons */
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .btn-pdf {
+    height: 48px;
+    background: linear-gradient(135deg, #6c63ff 0%, #8b5cf6 100%);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .btn-pdf:hover { opacity: 0.9; }
+  .btn-pdf:active { transform: scale(0.98); }
+
+  .btn-pdf.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .btn-excel {
+    height: 48px;
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .btn-excel:hover { opacity: 0.9; }
+  .btn-excel:active { transform: scale(0.98); }
+
+  .btn-clear {
+    height: 48px;
+    padding: 0 20px;
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    color: var(--muted2);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-clear:hover {
+    background: rgba(248,113,113,0.08);
+    border-color: rgba(248,113,113,0.3);
+    color: var(--red);
+  }
+
+  /* Toast notification */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid rgba(74,222,128,0.3);
+    border-radius: 12px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--green);
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .toast-dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Spinner */
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 600px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .form-row { grid-template-columns: 1fr; }
+    .actions { grid-template-columns: 1fr; }
+    h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="badge-tag"><span class="badge-dot"></span>SE 3242 — ICT University</div>
+  <h1>Student Grade Manager</h1>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Étudiants</div>
+      <div class="stat-value accent" id="s-total">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Moyenne</div>
+      <div class="stat-value" id="s-avg">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Meilleur</div>
+      <div class="stat-value green" id="s-best">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Admis ≥ 60</div>
+      <div class="stat-value green" id="s-pass">0</div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-title">Ajouter un étudiant</div>
+    <div class="form-row">
+      <div class="field">
+        <label>Nom complet</label>
+        <input id="inp-name" placeholder="ex: Alice Dupont" />
+      </div>
+      <div class="field">
+        <label>Score / 100 (vide = absent)</label>
+        <input id="inp-score" type="number" min="0" max="100" placeholder="ex: 87" />
+      </div>
+      <button class="btn-add" onclick="addStudent()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+        Ajouter
+      </button>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header-bar">
+      <span class="table-header-title">Liste des étudiants</span>
+      <span class="student-count" id="count-badge">0 étudiant</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Nom</th>
+          <th style="width:100px">Score</th>
+          <th style="width:80px">Note</th>
+          <th style="width:60px"></th>
+        </tr>
+      </thead>
+      <tbody id="student-table"></tbody>
+    </table>
+  </div>
+
+  <div class="actions">
+    <button class="btn-pdf" onclick="generatePDF()" id="btn-pdf">
+      <span class="spinner" id="pdf-spinner"></span>
+      <svg id="pdf-icon" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 2h6l4 4v8a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 2v4h4M5 9h6M5 12h4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Télécharger PDF
+    </button>
+    <button class="btn-excel" onclick="generateCSV()" id="btn-excel">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v10H2z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/><path d="M2 6h12M2 9h12M6 6v7M10 6v7" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Télécharger CSV
+    </button>
+    <button class="btn-clear" onclick="clearAll()">Vider</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span class="toast-dot"></span>
+  <span id="toast-msg">Fichier téléchargé !</span>
+</div>
+
+<script>
+let students = [
+  {name:'Mekam', score:95},
+  {name:'Antangana', score:82},
+  {name:'Tchetchoua', score:null},
+  {name:'Marie', score:47},
+  {name:'Merveille', score:70},
+  {name:'Russelle', score:97},
+];
+
+function getGrade(s) {
+  if (s === null) return null;
+  if (s >= 90) return 'A';
+  if (s >= 80) return 'B';
+  if (s >= 70) return 'C';
+  if (s >= 60) return 'D';
+  return 'F';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function render() {
+  const tbody = document.getElementById('student-table');
+  const badge = document.getElementById('count-badge');
+  badge.textContent = students.length + ' étudiant' + (students.length > 1 ? 's' : '');
+
+  if (students.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Aucun étudiant — ajoutez-en un ci-dessus</div></td></tr>`;
+  } else {
+    tbody.innerHTML = students.map((s, i) => {
+      const g = getGrade(s.score);
+      const gc = g ? 'g-' + g : 'g-NA';
+      const scoreHtml = s.score !== null
+        ? `<span class="score-mono">${s.score}</span>`
+        : `<span class="na">absent</span>`;
+      return `<tr>
+        <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:12px">${String(i+1).padStart(2,'0')}</td>
+        <td style="font-weight:600">${s.name}</td>
+        <td>${scoreHtml}</td>
+        <td><span class="grade ${gc}">${g || '—'}</span></td>
+        <td><button class="btn-del" onclick="removeStudent(${i})">×</button></td>
+      </tr>`;
+    }).join('');
+  }
+  updateStats();
+}
+
+function updateStats() {
+  const withScore = students.filter(s => s.score !== null);
+  const avg = withScore.length ? Math.round(withScore.reduce((a,s) => a + s.score, 0) / withScore.length) : null;
+  const best = withScore.length ? Math.max(...withScore.map(s => s.score)) : null;
+  const pass = withScore.filter(s => s.score >= 60).length;
+  document.getElementById('s-total').textContent = students.length;
+  document.getElementById('s-avg').textContent = avg !== null ? avg : '—';
+  document.getElementById('s-best').textContent = best !== null ? best : '—';
+  document.getElementById('s-pass').textContent = pass;
+}
+
+function addStudent() {
+  const name = document.getElementById('inp-name').value.trim();
+  const scoreVal = document.getElementById('inp-score').value.trim();
+  if (!name) { alert('Entre un nom !'); return; }
+  const score = scoreVal === '' ? null : parseInt(scoreVal);
+  if (scoreVal !== '' && (isNaN(score) || score < 0 || score > 100)) {
+    alert('Le score doit être entre 0 et 100 !'); return;
+  }
+  students.push({ name, score });
+  document.getElementById('inp-name').value = '';
+  document.getElementById('inp-score').value = '';
+  document.getElementById('inp-name').focus();
+  render();
+}
+
+document.getElementById('inp-score').addEventListener('keydown', e => { if (e.key === 'Enter') addStudent(); });
+document.getElementById('inp-name').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('inp-score').focus(); });
+
+function removeStudent(i) { students.splice(i, 1); render(); }
+
+function clearAll() {
+  if (students.length === 0) return;
+  if (confirm('Vider toute la liste ?')) { students = []; render(); }
+}
+
+function generatePDF() {
+  if (students.length === 0) { alert('Ajoute au moins un étudiant !'); return; }
+
+  const btn = document.getElementById('btn-pdf');
+  const spinner = document.getElementById('pdf-spinner');
+  const icon = document.getElementById('pdf-icon');
+  btn.classList.add('loading');
+  spinner.style.display = 'block';
+  icon.style.display = 'none';
+
+  setTimeout(() => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // En-tête
+    doc.setFillColor(108, 99, 255);
+    doc.rect(0, 0, 220, 38, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Student Grade Report', 14, 18);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(' ICT University', 14, 28);
+
+    const now = new Date();
+    doc.text('Généré le : ' + now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR'), 14, 35);
+
+    // Statistiques
+    const withScore = students.filter(s => s.score !== null);
+    const avg = withScore.length ? Math.round(withScore.reduce((a,s) => a + s.score, 0) / withScore.length) : 0;
+    const best = withScore.length ? Math.max(...withScore.map(s => s.score)) : 0;
+    const pass = withScore.filter(s => s.score >= 60).length;
+
+    doc.setFillColor(245, 245, 255);
+    doc.rect(14, 44, 182, 22, 'F');
+    doc.setTextColor(80, 80, 120);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total : ${students.length}`, 20, 53);
+    doc.text(`Moyenne : ${avg}/100`, 60, 53);
+    doc.text(`Meilleur : ${best}/100`, 105, 53);
+    doc.text(`Admis : ${pass}/${students.length}`, 155, 53);
+    doc.setTextColor(80, 80, 120);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('(score ≥ 60 = admis)', 155, 60);
+
+    // Tableau des étudiants
+    const tableData = students.map((s, i) => {
+      const g = getGrade(s.score);
+      return [
+        String(i + 1).padStart(2, '0'),
+        s.name,
+        s.score !== null ? s.score.toString() : 'Absent',
+        g || 'N/A',
+        s.score !== null ? (s.score >= 60 ? 'Admis' : 'Ajourné') : '—'
+      ];
+    });
+
+    doc.autoTable({
+      startY: 70,
+      head: [['#', 'Nom', 'Score', 'Note', 'Statut']],
+      body: tableData,
+      headStyles: {
+        fillColor: [108, 99, 255],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 10,
+      },
+      bodyStyles: { fontSize: 10 },
+      alternateRowStyles: { fillColor: [248, 248, 255] },
+      columnStyles: {
+        0: { cellWidth: 12, halign: 'center' },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 25, halign: 'center' },
+        3: { cellWidth: 20, halign: 'center' },
+        4: { cellWidth: 35, halign: 'center' },
+      },
+      didDrawCell: (data) => {
+        if (data.section === 'body' && data.column.index === 3) {
+          const grade = data.cell.raw;
+          const colors = { A:[74,222,128], B:[56,189,248], C:[251,191,36], D:[251,146,60], F:[248,113,113] };
+          if (colors[grade]) {
+            doc.setTextColor(...colors[grade]);
+            doc.setFont('helvetica', 'bold');
+            doc.text(grade, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'normal');
+            return false;
+          }
+        }
+        if (data.section === 'body' && data.column.index === 4) {
+          const status = data.cell.raw;
+          if (status === 'Admis') doc.setTextColor(74, 222, 128);
+          else if (status === 'Ajourné') doc.setTextColor(248, 113, 113);
+          doc.setFont('helvetica', 'bold');
+          doc.text(status, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'normal');
+          return false;
+        }
+      },
+    });
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text('Student Grade Calculator ', 14, doc.internal.pageSize.height - 8);
+      doc.text(`Page ${i} / ${pageCount}`, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 8, { align: 'right' });
+    }
+
+    doc.save('grades_report.pdf');
+
+    btn.classList.remove('loading');
+    spinner.style.display = 'none';
+    icon.style.display = 'block';
+    showToast('PDF téléchargé avec succès !');
+  }, 300);
+}
+
+function generateCSV() {
+  if (students.length === 0) { alert('Ajoute au moins un étudiant !'); return; }
+
+  const rows = [['#', 'Nom', 'Score', 'Note', 'Statut']];
+  students.forEach((s, i) => {
+    const g = getGrade(s.score);
+    rows.push([
+      i + 1,
+      s.name,
+      s.score !== null ? s.score : 'Absent',
+      g || 'N/A',
+      s.score !== null ? (s.score >= 60 ? 'Admis' : 'Ajourné') : '—'
+    ]);
+  });
+
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'grades_report.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV téléchargé — ouvre avec Excel !');
+}
+render();
+</script>
+</body>
+</html>
